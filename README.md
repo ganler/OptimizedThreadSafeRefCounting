@@ -7,7 +7,7 @@
 - `Unsafe`：Ignore thread safety.
 - `Trivial`: Use atomics directly.
 - `Optimized`: Use 2 kinds of counter:
-  - If 2 `ref_cnter`s are in the same threads, we can use local cnter.
+  - If 2 `ref_cnter`s are in the same thread, we can use local cnter whose overhead is very small.
   - Once when the local cnter is 0, we subtract the expensive global atomic cnter.
 
 ## Result for Benchmark
