@@ -39,39 +39,27 @@ public:
     ref_cnter(const ref_cnter& cnter)
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
-        inc();
+        if(m_cnt_ptr)
+            inc();
     }
     ref_cnter(ref_cnter&& cnter)
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
         cnter.m_cnt_ptr = nullptr;
     }
-    ref_cnter& operator=(const ref_cnter& cnter)
-    {   // Notice that you must fetch it first !!! U shouldn't ref cnter.m_cnt_ptr 2ce in one critical section.
-        const auto fetch = cnter.m_cnt_ptr;
-        if(m_cnt_ptr == fetch)
-            return *this;
-        auto original = m_cnt_ptr;
-        m_cnt_ptr = fetch;
-        inc();
-        dec_it(original);
-        return *this;
-    }
-    ref_cnter& operator=(ref_cnter&& cnter)
+    ref_cnter& operator=(ref_cnter cnter)
     {
-        dec();
-        m_cnt_ptr = cnter.m_cnt_ptr;
-        cnter.m_cnt_ptr = nullptr;
+        std::swap(m_cnt_ptr, cnter.m_cnt_ptr);
         return *this;
     }
     std::size_t cnt()
     {
-        return m_cnt_ptr->load(std::memory_order_relaxed);
+        return m_cnt_ptr->load(std::memory_order_acquire); // what happens latter cannot go earlier.
     }
 private:
     inline void dec_it(std::atomic<std::size_t>* ptr)
     {
-        if(ptr->fetch_sub(1, std::memory_order_relaxed) == 1)
+        if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
             delete ptr;
     }
     inline void dec()
@@ -80,7 +68,7 @@ private:
     }
     inline void inc()
     {
-        m_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
+        m_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
     }
     std::atomic<std::size_t>* m_cnt_ptr;
 };
@@ -107,9 +95,9 @@ public:
     ref_cnter(const ref_cnter& cnter):
             m_global_cnt_ptr(cnter.m_global_cnt_ptr)
     {// tested fine!
-        local_inc();
         if(&m_map != &cnter.m_map)
             global_inc();
+        local_inc();
     }
     ref_cnter(ref_cnter&& cnter):
             m_global_cnt_ptr(cnter.m_global_cnt_ptr)
@@ -122,6 +110,12 @@ public:
         }
         cnter.m_global_cnt_ptr = nullptr;
     }
+//    ref_cnter& operator=(ref_cnter cnter)
+// We cannot just simply do swap work here.(&cnter.m_map may != this.m_map) // !!! Attention.
+//    {
+//        std::swap(m_global_cnt_ptr, cnter.m_global_cnt_ptr);
+//        return *this;
+//    }
     ref_cnter& operator=(const ref_cnter& cnter)
     {
         const auto global_fetch = cnter.m_global_cnt_ptr;
@@ -154,7 +148,7 @@ public:
     }
     std::size_t global_cnt()
     {
-        return m_global_cnt_ptr->load(std::memory_order_relaxed);
+        return m_global_cnt_ptr->load(std::memory_order_acquire);
     }
 private:
     void local_inc()
@@ -163,14 +157,14 @@ private:
     }
     void global_inc()
     {
-        m_global_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
+        m_global_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
     }
     void dec_it(std::atomic<std::size_t>* ptr)
     {
         if(--m_map[ptr] == 0)
         {
             m_map.erase(ptr);
-            if(ptr->fetch_sub(1, std::memory_order_relaxed) == 1)
+            if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
                 delete ptr;
         }
     }

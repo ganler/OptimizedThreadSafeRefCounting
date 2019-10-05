@@ -30,8 +30,8 @@ int main()
                 });
             for(auto&& x : vec2)
                 x = std::async([&](){
-                    auto fuck = cnter_;
-                    cnter = cnter_;
+                    ref_cnter fuck;
+                    cnter = fuck;
                 });
             for(auto&& x : vec3)
                 x = std::async([&](){
@@ -50,22 +50,21 @@ int main()
             std::vector<std::future<void>> vec1(600), vec2(600), vec3(600);
             for(auto&& x : vec1)
                 x = std::async([&](){
-                    auto fuck = cnter;
-                    cnter_ = cnter;
+                    cnter = cnter_;  // cnter -> cnter_(local-2, global-1)
                 });
             for(auto&& x : vec2)
                 x = std::async([&](){
-                    auto fuck = cnter_;
-                    cnter = cnter_;
+                    ref_cnter cnter_foo;
+                    cnter = cnter_foo; // Where cnter is going. // cnter -> cnter_foo(local-1, global-1)
                 });
             for(auto&& x : vec3)
                 x = std::async([&](){
-                    ref_cnter fuck;
-                    cnter = std::move(fuck);
+                    ref_cnter cnter_foo;
+                    cnter = std::move(cnter_foo); // Where cnter is going. // cnter -> cnter_foo(local-1, global-1)
                 });
         }
-        ganler_assert(cnter.local_cnt()==1);
-        ganler_assert(cnter.global_cnt()==1);
+        ganler_assert(cnter.global_cnt()==1 && (cnter.local_cnt() == 1 || cnter.local_cnt() == 2));
+        // assigned to some cnter_foo in vec2/vec3.
     }
     std::cout << ">>> :) Current test passed !\n";
 }
