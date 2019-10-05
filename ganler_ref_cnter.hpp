@@ -66,12 +66,12 @@ public:
     }
     std::size_t cnt()
     {
-        return m_cnt_ptr->load(std::memory_order_acquire);
+        return m_cnt_ptr->load(std::memory_order_relaxed);
     }
 private:
     inline void dec_it(std::atomic<std::size_t>* ptr)
     {
-        if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
+        if(ptr->fetch_sub(1, std::memory_order_relaxed) == 1)
             delete ptr;
     }
     inline void dec()
@@ -80,7 +80,7 @@ private:
     }
     inline void inc()
     {
-        m_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
+        m_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
     }
     std::atomic<std::size_t>* m_cnt_ptr;
 };
@@ -154,7 +154,7 @@ public:
     }
     std::size_t global_cnt()
     {
-        return m_global_cnt_ptr->load(std::memory_order_acquire);
+        return m_global_cnt_ptr->load(std::memory_order_relaxed);
     }
 private:
     void local_inc()
@@ -163,14 +163,14 @@ private:
     }
     void global_inc()
     {
-        m_global_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
+        m_global_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
     }
     void dec_it(std::atomic<std::size_t>* ptr)
     {
         if(--m_map[ptr] == 0)
         {
             m_map.erase(ptr);
-            if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
+            if(ptr->fetch_sub(1, std::memory_order_relaxed) == 1)
                 delete ptr;
         }
     }
