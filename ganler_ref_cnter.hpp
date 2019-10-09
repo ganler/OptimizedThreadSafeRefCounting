@@ -52,25 +52,25 @@ public:
         std::swap(m_cnt_ptr, cnter.m_cnt_ptr);
         return *this;
     }
-    std::size_t cnt()
+    std::size_t cnt() const
     {
         return m_cnt_ptr->load(std::memory_order_acquire); // what happens latter cannot go earlier.
     }
 private:
-    inline void dec_it(std::atomic<std::size_t>* ptr)
+    inline void dec_it(std::atomic<std::size_t>* ptr) const
     {
         if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
             delete ptr;
     }
-    inline void dec()
+    inline void dec() const
     {
         dec_it(m_cnt_ptr);
     }
-    inline void inc()
+    inline void inc() const
     {
         m_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
     }
-    std::atomic<std::size_t>* m_cnt_ptr;
+    mutable std::atomic<std::size_t>* m_cnt_ptr;
 };
 
 }
@@ -142,24 +142,24 @@ public:
         cnter.m_global_cnt_ptr = nullptr;
         return *this;
     }
-    std::size_t local_cnt()
+    std::size_t local_cnt() const
     {
         return m_map[m_global_cnt_ptr];
     }
-    std::size_t global_cnt()
+    std::size_t global_cnt() const
     {
         return m_global_cnt_ptr->load(std::memory_order_acquire);
     }
 private:
-    void local_inc()
+    void local_inc() const
     {
         ++m_map[m_global_cnt_ptr];
     }
-    void global_inc()
+    void global_inc() const
     {
         m_global_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
     }
-    void dec_it(std::atomic<std::size_t>* ptr)
+    void dec_it(std::atomic<std::size_t>* ptr) const
     {
         if(--m_map[ptr] == 0)
         {
@@ -168,16 +168,16 @@ private:
                 delete ptr;
         }
     }
-    void dec()
+    void dec() const
     {
         dec_it(m_global_cnt_ptr);
     }
-    inline std::unordered_map<std::atomic<std::size_t>*, int>& get_map()
+    inline std::unordered_map<std::atomic<std::size_t>*, int>& get_map() const
     {
         thread_local std::unordered_map<std::atomic<std::size_t>*, int> local_map;
         return local_map;
     }
-    std::atomic<std::size_t>* m_global_cnt_ptr;
+    mutable std::atomic<std::size_t>* m_global_cnt_ptr;
     std::unordered_map<std::atomic<std::size_t>*, int>& m_map = std::ref(get_map());
     //inline static thread_local std::unordered_map<std::atomic<std::size_t>*, int> m_map; // map is safe as it's local!
 };
@@ -222,21 +222,21 @@ public:
         cnter.m_cnt_ptr = nullptr;
         return *this;
     }
-    std::size_t cnt()
+    std::size_t cnt() const
     {
         return *m_cnt_ptr;
     }
 private:
-    void dec()
+    void dec() const
     {
         if(0 == --(*m_cnt_ptr))
             delete m_cnt_ptr;
     }
-    void inc()
+    void inc() const
     {
         ++(*m_cnt_ptr);
     }
-    std::size_t* m_cnt_ptr = nullptr;
+    mutable std::size_t* m_cnt_ptr = nullptr;
 };
 
 }

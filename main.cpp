@@ -25,18 +25,18 @@ int main()
             std::vector<std::future<void>> vec1(1600), vec2(1600), vec3(1600);
             for(auto&& x : vec1)
                 x = std::async([&](){
-                    auto fuck = cnter;
+                    const auto cnter_foo = cnter;
                     cnter_ = cnter;
                 });
             for(auto&& x : vec2)
                 x = std::async([&](){
-                    ref_cnter fuck;
-                    cnter = fuck;
+                    const ref_cnter cnter_foo;
+                    cnter = cnter_foo;
                 });
             for(auto&& x : vec3)
                 x = std::async([&](){
-                    ref_cnter fuck;
-                    cnter = std::move(fuck);
+                    ref_cnter cnter_foo;
+                    cnter = std::move(cnter_foo);
                 });
         }
         ganler_assert(cnter.cnt() == 1);
@@ -54,12 +54,12 @@ int main()
                 });
             for(auto&& x : vec2)
                 x = std::async([&](){
-                    ref_cnter cnter_foo;
+                    const ref_cnter cnter_foo;
                     cnter = cnter_foo; // Where cnter is going. // cnter -> cnter_foo(local-1, global-1)
                 });
             for(auto&& x : vec3)
                 x = std::async([&](){
-                    ref_cnter cnter_foo;
+                    const ref_cnter cnter_foo;
                     cnter = std::move(cnter_foo); // Where cnter is going. // cnter -> cnter_foo(local-1, global-1)
                 });
         }
