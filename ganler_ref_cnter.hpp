@@ -31,44 +31,40 @@ class ref_cnter
 {
 public:
     ref_cnter() : m_cnt_ptr(new std::atomic<std::size_t>{1}) {}
-    ~ref_cnter()
+    ~ref_cnter() noexcept
     {
         if(nullptr != m_cnt_ptr)
             dec();
     }
-    ref_cnter(const ref_cnter& cnter)
+    ref_cnter(const ref_cnter& cnter) noexcept
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
-        if(m_cnt_ptr)
+        if(nullptr != m_cnt_ptr)
             inc();
     }
-    ref_cnter(ref_cnter&& cnter)
+    ref_cnter(ref_cnter&& cnter) noexcept
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
         cnter.m_cnt_ptr = nullptr;
     }
-    ref_cnter& operator=(ref_cnter cnter)
+    ref_cnter& operator=(ref_cnter cnter) noexcept
     {
         std::swap(m_cnt_ptr, cnter.m_cnt_ptr);
         return *this;
     }
-    std::size_t cnt() const
-    {
-        return m_cnt_ptr->load(std::memory_order_acquire); // what happens latter cannot go earlier.
-    }
 private:
-    inline void dec_it(std::atomic<std::size_t>* ptr) const
+    inline void dec_it(std::atomic<std::size_t>* ptr) const noexcept
     {
         if(ptr->fetch_sub(1, std::memory_order_acq_rel) == 1)
             delete ptr;
     }
-    inline void dec() const
+    void dec() const noexcept
     {
         dec_it(m_cnt_ptr);
     }
-    inline void inc() const
+    void inc() const noexcept
     {
-        m_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
+        m_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
     }
     mutable std::atomic<std::size_t>* m_cnt_ptr;
 };
@@ -142,14 +138,6 @@ public:
         cnter.m_global_cnt_ptr = nullptr;
         return *this;
     }
-    std::size_t local_cnt() const
-    {
-        return m_map[m_global_cnt_ptr];
-    }
-    std::size_t global_cnt() const
-    {
-        return m_global_cnt_ptr->load(std::memory_order_acquire);
-    }
 private:
     void local_inc() const
     {
@@ -157,7 +145,7 @@ private:
     }
     void global_inc() const
     {
-        m_global_cnt_ptr->fetch_add(1, std::memory_order_acq_rel);
+        m_global_cnt_ptr->fetch_add(1, std::memory_order_relaxed);
     }
     void dec_it(std::atomic<std::size_t>* ptr) const
     {
@@ -179,7 +167,9 @@ private:
     }
     mutable std::atomic<std::size_t>* m_global_cnt_ptr;
     std::unordered_map<std::atomic<std::size_t>*, int>& m_map = std::ref(get_map());
-    //inline static thread_local std::unordered_map<std::atomic<std::size_t>*, int> m_map; // map is safe as it's local!
+    // Inline static thread_local std::unordered_map<std::atomic<std::size_t>*, int> m_map; // map is safe as it's local!
+    // The performance of std::unordered_map is related to its impl.
+    // (Actually I believe this is more useful when non-local operation is much more expensive than local ones.)
 };
 
 }
@@ -196,12 +186,12 @@ public:
     {
         dec();
     }
-    ref_cnter(const ref_cnter& cnter)
+    ref_cnter(const ref_cnter& cnter) noexcept
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
         inc();
     }
-    ref_cnter(ref_cnter&& cnter)
+    ref_cnter(ref_cnter&& cnter) noexcept
     {
         m_cnt_ptr = cnter.m_cnt_ptr;
         cnter.m_cnt_ptr = nullptr;
@@ -222,17 +212,13 @@ public:
         cnter.m_cnt_ptr = nullptr;
         return *this;
     }
-    std::size_t cnt() const
-    {
-        return *m_cnt_ptr;
-    }
 private:
     void dec() const
     {
         if(0 == --(*m_cnt_ptr))
             delete m_cnt_ptr;
     }
-    void inc() const
+    void inc() const noexcept
     {
         ++(*m_cnt_ptr);
     }
